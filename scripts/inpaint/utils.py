@@ -26,7 +26,7 @@ import time
 from scipy.interpolate import interp1d
 from collections import namedtuple
 
-def path_planning(num_frames, x, y, z, path_type=''):
+def path_planning(num_frames, x, y, z, speed=1.0,start=-2, stop=0,path_type=''):
     if path_type == 'straight-line':
         corner_points = np.array([[0, 0, 0], [(0 + x) * 0.5, (0 + y) * 0.5, (0 + z) * 0.5], [x, y, z]])
         corner_t = np.linspace(0, 1, len(corner_points))
@@ -43,7 +43,7 @@ def path_planning(num_frames, x, y, z, path_type=''):
         xs, ys, zs = [xx.squeeze() for xx in np.split(spline, 3, 1)]        
     elif path_type == 'circle':
         xs, ys, zs = [], [], []
-        for frame_id, bs_shift_val in enumerate(np.arange(-2.0, 2.0, (4./num_frames))):
+        for frame_id, bs_shift_val in enumerate(np.arange(start, stop, (2.0/(speed*num_frames)))):
             xs += [np.cos(bs_shift_val * np.pi) * 1 * x]
             ys += [np.sin(bs_shift_val * np.pi) * 1 * y]
             zs += [np.cos(bs_shift_val * np.pi/2.) * 1 * z]

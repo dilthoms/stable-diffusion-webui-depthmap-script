@@ -2432,7 +2432,7 @@ def output_3d_photo(verts, colors, faces, Height, Width, hFov, vFov, tgt_poses, 
     #if config.get('anti_flickering') is True:
     #    init_factor = 3
     #bty: basically Supersample Anti-Aliasing (SSAA)
-    init_factor = config['ssaa']
+    #init_factor = 3#config['ssaa']
     if (cam_mesh.graph['original_H'] is not None) and (cam_mesh.graph['original_W'] is not None):
         canvas_w = cam_mesh.graph['original_W']
         canvas_h = cam_mesh.graph['original_H']
@@ -2544,5 +2544,4 @@ def output_3d_photo(verts, colors, faces, Height, Width, hFov, vFov, tgt_poses, 
         fn = os.path.join(output_dir, video_basename + '_' + video_traj_type + '.' + fnExt)
         fn_saved.append(fn)
         clip.write_videofile(fn, fps=config['fps'])
-
     return normal_canvas, all_canvas, fn_saved

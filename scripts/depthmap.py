@@ -36,7 +36,7 @@ import vispy
 import trimesh
 import math
 import subprocess
-
+import base64
 sys.path.append('extensions/stable-diffusion-webui-depthmap-script/scripts')
 
 from stereoimage_generation import create_stereoimages
@@ -120,6 +120,9 @@ def main_ui_panel(is_depth_tab):
 			with gr.Row(visible=False) as clip_options_row_1:
 				clipthreshold_far = gr.Slider(minimum=0, maximum=1, step=0.001, label='Far clip', value=0)
 				clipthreshold_near = gr.Slider(minimum=0, maximum=1, step=0.001, label='Near clip', value=1)
+				speed = gr.Slider(minimum=0.1,maximum=10.0,step=0.1,label='Speed',value=1.0)
+				start = gr.Slider(minimum=-2.0,maximum=0,step=0.1,label='Start',value=-2.0)
+				stop = gr.Slider(minimum=0.0,maximum=2,step=0.1,label='Stop',value=0.0)
 
 		with gr.Group():
 			with gr.Row():
@@ -137,7 +140,6 @@ def main_ui_panel(is_depth_tab):
 				with gr.Group(visible=False) as stereo_options_row_0:
 					with gr.Row():
 						stereo_modes = gr.CheckboxGroup(["left-right", "right-left", "top-bottom", "bottom-top", "red-cyan-anaglyph"], label="Output", value=["left-right","red-cyan-anaglyph"])
-
 			with gr.Row(visible=False) as stereo_options_row_1:
 				stereo_divergence = gr.Slider(minimum=0.05, maximum=10.005, step=0.01, label='Divergence (3D effect)',
 											  value=2.5)
@@ -248,7 +250,7 @@ def main_ui_panel(is_depth_tab):
 			outputs=[bgrem_options_row_1, bgrem_options_row_2]
 		)
 
-	return [compute_device, model_type, net_width, net_height, match_size, boost, invert_depth, clipdepth, clipthreshold_far, clipthreshold_near, combine_output, combine_output_axis, save_depth, show_depth, show_heat, gen_stereo, stereo_modes, stereo_divergence, stereo_fill, stereo_balance, inpaint, inpaint_vids, background_removal, save_background_removal_masks, gen_normal, pre_depth_background_removal, background_removal_model, gen_mesh, mesh_occlude, mesh_spherical]
+	return [compute_device, model_type, net_width, net_height, match_size, boost, invert_depth, clipdepth, clipthreshold_far, clipthreshold_near, combine_output, combine_output_axis, save_depth, show_depth, show_heat, gen_stereo, stereo_modes, stereo_divergence, stereo_fill, stereo_balance, inpaint, inpaint_vids, background_removal, save_background_removal_masks, gen_normal, pre_depth_background_removal, background_removal_model, gen_mesh, mesh_occlude, mesh_spherical,speed,start,stop]
 
 
 class Script(scripts.Script):
@@ -265,7 +267,7 @@ class Script(scripts.Script):
 
 	# run from script in txt2img or img2img
 	def run(self, p,
-			compute_device, model_type, net_width, net_height, match_size, boost, invert_depth, clipdepth, clipthreshold_far, clipthreshold_near, combine_output, combine_output_axis, save_depth, show_depth, show_heat, gen_stereo, stereo_modes, stereo_divergence, stereo_fill, stereo_balance, inpaint, inpaint_vids, background_removal, save_background_removal_masks, gen_normal, pre_depth_background_removal, background_removal_model, gen_mesh, mesh_occlude, mesh_spherical
+			compute_device, model_type, net_width, net_height, match_size, boost, invert_depth, clipdepth, clipthreshold_far, clipthreshold_near, combine_output, combine_output_axis, save_depth, show_depth, show_heat, gen_stereo, stereo_modes, stereo_divergence, stereo_fill, stereo_balance, inpaint, inpaint_vids, background_removal, save_background_removal_masks, gen_normal, pre_depth_background_removal, background_removal_model, gen_mesh, mesh_occlude, mesh_spherical, speed,start,stop
 			):
 
 		# sd process 
@@ -278,7 +280,8 @@ class Script(scripts.Script):
 			# skip first grid image
 			if count == 0 and len(processed.images) > 1 and opts.return_grid:
 				continue
-			inputimages.append(processed.images[count])
+			#inputimages.append(processed.images[count])
+			inputimages.append(p.init_images[count])
 		
 		#remove on base image before depth calculation
 		background_removed_images = []
@@ -289,19 +292,24 @@ class Script(scripts.Script):
 			else:
 				background_removed_images = batched_background_removal(inputimages, background_removal_model)			
 
-		newmaps, mesh_fi, meshsimple_fi = run_depthmap(processed, p.outpath_samples, inputimages, None,
+		newmaps, mesh_fi, fn_saved = run_depthmap(processed, p.outpath_samples, inputimages, None,
                                         compute_device, model_type,
                                         net_width, net_height, match_size, boost, invert_depth, clipdepth, clipthreshold_far, clipthreshold_near, combine_output, combine_output_axis, save_depth, show_depth, show_heat, gen_stereo, stereo_modes, stereo_divergence, stereo_fill, stereo_balance, inpaint, inpaint_vids, background_removal, save_background_removal_masks, gen_normal,
-                                        background_removed_images, "mp4", 0, False, None, False, gen_mesh, mesh_occlude, mesh_spherical )
+                                        background_removed_images, "mp4", 0, False, None, False, gen_mesh, mesh_occlude, mesh_spherical,speed,start,stop)
 		
 		for img in newmaps:
 			processed.images.append(img)
-
+		vids = []
+		for fn in fn_saved:
+			with open(fn, "rb") as videoFile:
+				text = base64.b64encode(videoFile.read())
+				vids.append(text)
+		processed.infotexts[0]+=f", Videos:{vids}"
 		return processed
 
 def run_depthmap(processed, outpath, inputimages, inputnames,
                  compute_device, model_type, net_width, net_height, match_size, boost, invert_depth, clipdepth, clipthreshold_far, clipthreshold_near, combine_output, combine_output_axis, save_depth, show_depth, show_heat, gen_stereo, stereo_modes, stereo_divergence, stereo_fill, stereo_balance, inpaint, inpaint_vids, background_removal, save_background_removal_masks, gen_normal,
-                 background_removed_images, fnExt, vid_ssaa, custom_depthmap, custom_depthmap_img, depthmap_batch_reuse, gen_mesh, mesh_occlude, mesh_spherical):
+                 background_removed_images, fnExt, vid_ssaa, custom_depthmap, custom_depthmap_img, depthmap_batch_reuse, gen_mesh, mesh_occlude, mesh_spherical,speed,start,stop):
 
 	if len(inputimages) == 0 or inputimages[0] == None:
 		return [], []
@@ -776,15 +784,14 @@ def run_depthmap(processed, outpath, inputimages, inputnames,
 			shared.sd_model.cond_stage_model.to(devices.cpu)
 			shared.sd_model.first_stage_model.to(devices.cpu)
 
-			mesh_fi = run_3dphoto(device, inpaint_imgs, inpaint_depths, inputnames, outpath, fnExt, vid_ssaa, inpaint_vids)
+			mesh_fi, fn_saved = run_3dphoto(device, inpaint_imgs, inpaint_depths, inputnames, outpath, fnExt, vid_ssaa, inpaint_vids, speed,start,stop)
 	
 	finally:
 		# reload sd model
 		shared.sd_model.cond_stage_model.to(devices.device)
 		shared.sd_model.first_stage_model.to(devices.device)
 		print("All done.")
-
-	return outimages, mesh_fi, meshsimple_fi
+	return outimages, mesh_fi, fn_saved
 
 @njit(parallel=True)
 def clipdepthmap(img, clipthreshold_far, clipthreshold_near):
@@ -821,7 +828,7 @@ def get_uniquefn(outpath, basename, ext):
 	
 	return basename
 
-def run_3dphoto(device, img_rgb, img_depth, inputnames, outpath, fnExt, vid_ssaa, inpaint_vids):
+def run_3dphoto(device, img_rgb, img_depth, inputnames, outpath, fnExt, vid_ssaa, inpaint_vids,speed,start,stop):
 	mesh_fi = ''
 	try:
 		print("Running 3D Photo Inpainting .. ")
@@ -898,6 +905,7 @@ def run_3dphoto(device, img_rgb, img_depth, inputnames, outpath, fnExt, vid_ssaa
 
 			basename = get_uniquefn(outpath, basename, 'obj')
 			mesh_fi = os.path.join(outpath, basename + '.obj')
+			fn_saved = []
 
 			print(f"\nGenerating inpainted mesh .. (go make some coffee) ..")
 
@@ -941,7 +949,7 @@ def run_3dphoto(device, img_rgb, img_depth, inputnames, outpath, fnExt, vid_ssaa
 								depth_feat_model)
 
 			if rt_info is not False and inpaint_vids:
-				run_3dphoto_videos(mesh_fi, basename, outpath, 300, 40, 
+				fn_saved = run_3dphoto_videos(mesh_fi, basename, outpath, 300, 40,speed,start, stop,
 					[0.03, 0.03, 0.05, 0.03], 
 					['double-straight-line', 'double-straight-line', 'circle', 'circle'], 
 					[0.00, 0.00, -0.015, -0.015], 
@@ -960,9 +968,9 @@ def run_3dphoto(device, img_rgb, img_depth, inputnames, outpath, fnExt, vid_ssaa
 		depth_feat_model = None
 		devices.torch_gc()
 
-	return mesh_fi
+	return mesh_fi, fn_saved
 
-def run_3dphoto_videos(mesh_fi, basename, outpath, num_frames, fps, crop_border, traj_types, x_shift_range, y_shift_range, z_shift_range, video_postfix, vid_dolly, fnExt, vid_ssaa):
+def run_3dphoto_videos(mesh_fi, basename, outpath, num_frames, fps, speed, start, stop, crop_border, traj_types, x_shift_range, y_shift_range, z_shift_range, video_postfix, vid_dolly, fnExt, vid_ssaa):
 
 	if platform.system() == 'Windows':
 		vispy.use(app='PyQt5')
@@ -1010,7 +1018,10 @@ def run_3dphoto_videos(mesh_fi, basename, outpath, num_frames, fps, crop_border,
 	for traj_idx in range(len(config['traj_types'])):
 		tgt_poses = []
 		sx, sy, sz = path_planning(config['num_frames'], config['x_shift_range'][traj_idx], config['y_shift_range'][traj_idx],
-								config['z_shift_range'][traj_idx], path_type=config['traj_types'][traj_idx])
+								config['z_shift_range'][traj_idx],speed,start,stop, path_type=config['traj_types'][traj_idx])
+		sx = sx[:num_frames]
+		sy = sy[:num_frames]
+		sz = sz[:num_frames]
 		for xx, yy, zz in zip(sx, sy, sz):
 			tgt_poses.append(generic_pose * 1.)
 			tgt_poses[-1][:3, -1] = np.array([xx, yy, zz])
@@ -1242,7 +1253,7 @@ def on_ui_tabs():
                 submit = gr.Button('Generate', elem_id="depthmap_generate", variant='primary')
 
 				# insert main panel
-                compute_device, model_type, net_width, net_height, match_size, boost, invert_depth, clipdepth, clipthreshold_far, clipthreshold_near, combine_output, combine_output_axis, save_depth, show_depth, show_heat, gen_stereo, stereo_modes, stereo_divergence, stereo_fill, stereo_balance, inpaint, inpaint_vids, background_removal, save_background_removal_masks, gen_normal, pre_depth_background_removal, background_removal_model, gen_mesh, mesh_occlude, mesh_spherical = main_ui_panel(True)
+                compute_device, model_type, net_width, net_height, match_size, boost, invert_depth, clipdepth, clipthreshold_far, clipthreshold_near, combine_output, combine_output_axis, save_depth, show_depth, show_heat, gen_stereo, stereo_modes, stereo_divergence, stereo_fill, stereo_balance, inpaint, inpaint_vids, background_removal, save_background_removal_masks, gen_normal, pre_depth_background_removal, background_removal_model, gen_mesh, mesh_occlude, mesh_spherical,speed,start,stop = main_ui_panel(True)
 
                 unloadmodels = gr.Button('Unload models', elem_id="depthmap_unloadmodels")
 
