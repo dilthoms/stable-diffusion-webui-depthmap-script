@@ -120,7 +120,7 @@ def main_ui_panel(is_depth_tab):
 			with gr.Row(visible=False) as clip_options_row_1:
 				clipthreshold_far = gr.Slider(minimum=0, maximum=1, step=0.001, label='Far clip', value=0)
 				clipthreshold_near = gr.Slider(minimum=0, maximum=1, step=0.001, label='Near clip', value=1)
-				speed = gr.Slider(minimum=0.1,maximum=10.0,step=0.1,label='Speed',value=1.0)
+				speed = gr.Slider(minimum=0.1,maximum=10.0,step=0.1,label='Speed',value=2.0)
 				start = gr.Slider(minimum=-2.0,maximum=0,step=0.1,label='Start',value=-2.0)
 				stop = gr.Slider(minimum=0.0,maximum=2,step=0.1,label='Stop',value=0.0)
 
@@ -267,7 +267,7 @@ class Script(scripts.Script):
 
 	# run from script in txt2img or img2img
 	def run(self, p,
-			compute_device, model_type, net_width, net_height, match_size, boost, invert_depth, clipdepth, clipthreshold_far, clipthreshold_near, combine_output, combine_output_axis, save_depth, show_depth, show_heat, gen_stereo, stereo_modes, stereo_divergence, stereo_fill, stereo_balance, inpaint, inpaint_vids, background_removal, save_background_removal_masks, gen_normal, pre_depth_background_removal, background_removal_model, gen_mesh, mesh_occlude, mesh_spherical, speed,start,stop
+			compute_device, model_type, net_width, net_height, match_size, boost, invert_depth, clipdepth, clipthreshold_far, clipthreshold_near, combine_output, combine_output_axis, save_depth, show_depth, show_heat, gen_stereo, stereo_modes, stereo_divergence, stereo_fill, stereo_balance, inpaint, inpaint_vids, background_removal, save_background_removal_masks, gen_normal, pre_depth_background_removal, background_removal_model, gen_mesh, mesh_occlude, mesh_spherical,speed,start,stop
 			):
 
 		# sd process 
@@ -949,7 +949,7 @@ def run_3dphoto(device, img_rgb, img_depth, inputnames, outpath, fnExt, vid_ssaa
 								depth_feat_model)
 
 			if rt_info is not False and inpaint_vids:
-				fn_saved = run_3dphoto_videos(mesh_fi, basename, outpath, 300, 40,speed,start, stop,
+				fn_saved = run_3dphoto_videos(mesh_fi, basename, outpath, 300, 30,speed,start, stop,
 					[0.03, 0.03, 0.05, 0.03], 
 					['double-straight-line', 'double-straight-line', 'circle', 'circle'], 
 					[0.00, 0.00, -0.015, -0.015], 
@@ -970,7 +970,7 @@ def run_3dphoto(device, img_rgb, img_depth, inputnames, outpath, fnExt, vid_ssaa
 
 	return mesh_fi, fn_saved
 
-def run_3dphoto_videos(mesh_fi, basename, outpath, num_frames, fps, speed, start, stop, crop_border, traj_types, x_shift_range, y_shift_range, z_shift_range, video_postfix, vid_dolly, fnExt, vid_ssaa):
+def run_3dphoto_videos(mesh_fi, basename, outpath, num_frames, fps, speed,start, stop, crop_border, traj_types, x_shift_range, y_shift_range, z_shift_range, video_postfix, vid_dolly, fnExt, vid_ssaa):
 
 	if platform.system() == 'Windows':
 		vispy.use(app='PyQt5')
@@ -1019,9 +1019,9 @@ def run_3dphoto_videos(mesh_fi, basename, outpath, num_frames, fps, speed, start
 		tgt_poses = []
 		sx, sy, sz = path_planning(config['num_frames'], config['x_shift_range'][traj_idx], config['y_shift_range'][traj_idx],
 								config['z_shift_range'][traj_idx],speed,start,stop, path_type=config['traj_types'][traj_idx])
-		sx = sx[:num_frames]
-		sy = sy[:num_frames]
-		sz = sz[:num_frames]
+		#sx = sx[:num_frames]
+		#sy = sy[:num_frames]
+		#sz = sz[:num_frames]
 		for xx, yy, zz in zip(sx, sy, sz):
 			tgt_poses.append(generic_pose * 1.)
 			tgt_poses[-1][:3, -1] = np.array([xx, yy, zz])
@@ -1142,7 +1142,8 @@ def run_generate(depthmap_mode,
                 custom_depthmap, 
                 custom_depthmap_img,
                 depthmap_batch_reuse,
-                gen_mesh, mesh_occlude, mesh_spherical
+                gen_mesh, mesh_occlude, mesh_spherical,
+		speed,start,stop
                 ):
 
 				
@@ -1195,7 +1196,7 @@ def run_generate(depthmap_mode,
 	outputs, mesh_fi, meshsimple_fi = run_depthmap(
         None, outpath, imageArr, imageNameArr,
         compute_device, model_type, net_width, net_height, match_size, boost, invert_depth, clipdepth, clipthreshold_far, clipthreshold_near, combine_output, combine_output_axis, save_depth, show_depth, show_heat, gen_stereo, stereo_modes, stereo_divergence, stereo_fill, stereo_balance, inpaint, inpaint_vids, background_removal, save_background_removal_masks, gen_normal,
-        background_removed_images, fnExt, vid_ssaa, custom_depthmap, custom_depthmap_img, depthmap_batch_reuse, gen_mesh, mesh_occlude, mesh_spherical)
+        background_removed_images, fnExt, vid_ssaa, custom_depthmap, custom_depthmap_img, depthmap_batch_reuse, gen_mesh, mesh_occlude, mesh_spherical,speed,start,stop)
 
 	# use inpainted 3d mesh to show in 3d model output when enabled in settings
 	if hasattr(opts, 'depthmap_script_show_3d_inpaint') and opts.depthmap_script_show_3d_inpaint and mesh_fi != None and len(mesh_fi) > 0:
@@ -1361,7 +1362,8 @@ def on_ui_tabs():
 				custom_depthmap, 
 				custom_depthmap_img,
 				depthmap_batch_reuse,
-				gen_mesh, mesh_occlude, mesh_spherical
+				gen_mesh, mesh_occlude, mesh_spherical,
+				speed,start,stop
             ],
             outputs=[
                 result_images,
