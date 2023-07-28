@@ -779,6 +779,7 @@ def run_depthmap(processed, outpath, inputimages, inputnames,
 
 	
 	try:
+		fn_saved = ""
 		if inpaint:
 			# unload sd model
 			shared.sd_model.cond_stage_model.to(devices.cpu)
@@ -830,6 +831,7 @@ def get_uniquefn(outpath, basename, ext):
 
 def run_3dphoto(device, img_rgb, img_depth, inputnames, outpath, fnExt, vid_ssaa, inpaint_vids,speed,start,stop):
 	mesh_fi = ''
+	fn_saved=''
 	try:
 		print("Running 3D Photo Inpainting .. ")
 		edgemodel_path = './models/3dphoto/edge_model.pth'
@@ -1050,7 +1052,7 @@ def run_3dphoto_videos(mesh_fi, basename, outpath, num_frames, fps, speed,start,
 	return fn_saved
 
 # called from gen vid tab button
-def run_makevideo(fn_mesh, vid_numframes, vid_fps, vid_traj, vid_shift, vid_border, dolly, vid_format, vid_ssaa):
+def run_makevideo(fn_mesh, vid_numframes, vid_fps, vid_traj, vid_shift, vid_border, dolly, vid_format, vid_ssaa,speed,start,stop):
 	if len(fn_mesh) == 0 or not os.path.exists(fn_mesh):
 		raise Exception("Could not open mesh.")
 
@@ -1098,7 +1100,7 @@ def run_makevideo(fn_mesh, vid_numframes, vid_fps, vid_traj, vid_shift, vid_bord
 	
 	print("Loading mesh ..")
 
-	fn_saved = run_3dphoto_videos(fn_mesh, basename, outpath, num_frames, num_fps, crop_border, vid_traj, x_shift_range, y_shift_range, z_shift_range, [''], dolly, fnExt, vid_ssaa)
+	fn_saved = run_3dphoto_videos(fn_mesh, basename, outpath, num_frames, num_fps, speed,start,stop,crop_border, vid_traj, x_shift_range, y_shift_range, z_shift_range, [''], dolly, fnExt, vid_ssaa)
 
 	return fn_saved[-1], fn_saved[-1], ''
 
@@ -1385,7 +1387,8 @@ def on_ui_tabs():
 				vid_border,
 				vid_dolly,
 				vid_format,
-				vid_ssaa
+				vid_ssaa,
+				speed,start,stop
             ],
             outputs=[
                 depth_vid,
