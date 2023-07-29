@@ -832,6 +832,7 @@ def get_uniquefn(outpath, basename, ext):
 
 def run_3dphoto(device, img_rgb, img_depth, inputnames, outpath, fnExt, vid_ssaa, inpaint_vids,speed,start,stop):
 	mesh_fi = ''
+	fn_saved=''
 	try:
 		print("Running 3D Photo Inpainting .. ")
 		edgemodel_path = './models/3dphoto/edge_model.pth'
