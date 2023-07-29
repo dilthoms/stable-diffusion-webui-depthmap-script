@@ -300,11 +300,12 @@ class Script(scripts.Script):
 		for img in newmaps:
 			processed.images.append(img)
 		vids = []
+		processed.infotexts[0]+=f", Videos:"
 		for fn in fn_saved:
 			with open(fn, "rb") as videoFile:
-				text = base64.b64encode(videoFile.read())
+				text = base64.b64encode(videoFile.read()).decode()
+				processed.infotexts[0]+=f"{text},"
 				vids.append(text)
-		processed.infotexts[0]+=f", Videos:{vids}"
 		return processed
 
 def run_depthmap(processed, outpath, inputimages, inputnames,
@@ -779,6 +780,7 @@ def run_depthmap(processed, outpath, inputimages, inputnames,
 
 	
 	try:
+		fn_saved = ""
 		if inpaint:
 			# unload sd model
 			shared.sd_model.cond_stage_model.to(devices.cpu)
@@ -949,7 +951,7 @@ def run_3dphoto(device, img_rgb, img_depth, inputnames, outpath, fnExt, vid_ssaa
 								depth_feat_model)
 
 			if rt_info is not False and inpaint_vids:
-				fn_saved = run_3dphoto_videos(mesh_fi, basename, outpath, 300, 30,speed,start, stop,
+				fn_saved = run_3dphoto_videos(mesh_fi, basename, outpath, 300, 21,speed,start, stop,
 					[0.03, 0.03, 0.05, 0.03], 
 					['double-straight-line', 'double-straight-line', 'circle', 'circle'], 
 					[0.00, 0.00, -0.015, -0.015], 
@@ -1050,7 +1052,7 @@ def run_3dphoto_videos(mesh_fi, basename, outpath, num_frames, fps, speed,start,
 	return fn_saved
 
 # called from gen vid tab button
-def run_makevideo(fn_mesh, vid_numframes, vid_fps, vid_traj, vid_shift, vid_border, dolly, vid_format, vid_ssaa):
+def run_makevideo(fn_mesh, vid_numframes, vid_fps, vid_traj, vid_shift, vid_border, dolly, vid_format, vid_ssaa,speed,start,stop):
 	if len(fn_mesh) == 0 or not os.path.exists(fn_mesh):
 		raise Exception("Could not open mesh.")
 
@@ -1098,7 +1100,7 @@ def run_makevideo(fn_mesh, vid_numframes, vid_fps, vid_traj, vid_shift, vid_bord
 	
 	print("Loading mesh ..")
 
-	fn_saved = run_3dphoto_videos(fn_mesh, basename, outpath, num_frames, num_fps, crop_border, vid_traj, x_shift_range, y_shift_range, z_shift_range, [''], dolly, fnExt, vid_ssaa)
+	fn_saved = run_3dphoto_videos(fn_mesh, basename, outpath, num_frames, num_fps, speed,start,stop,crop_border, vid_traj, x_shift_range, y_shift_range, z_shift_range, [''], dolly, fnExt, vid_ssaa)
 
 	return fn_saved[-1], fn_saved[-1], ''
 
@@ -1385,7 +1387,8 @@ def on_ui_tabs():
 				vid_border,
 				vid_dolly,
 				vid_format,
-				vid_ssaa
+				vid_ssaa,
+				speed,start,stop
             ],
             outputs=[
                 depth_vid,
