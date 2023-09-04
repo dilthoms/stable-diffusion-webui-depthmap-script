@@ -30,14 +30,14 @@ def path_planning(num_frames, x, y, z, speed=1.0,start=-2, stop=0,path_type=''):
     if path_type == 'straight-line':
         corner_points = np.array([[0, 0, 0], [(0 + x) * 0.5, (0 + y) * 0.5, (0 + z) * 0.5], [x, y, z]])
         corner_t = np.linspace(0, 1, len(corner_points))
-        t = np.linspace(0, 1, num_frames)
+        t = np.linspace(0, 1, speed*num_frames)
         cs = interp1d(corner_t, corner_points, axis=0, kind='quadratic')
         spline = cs(t)
         xs, ys, zs = [xx.squeeze() for xx in np.split(spline, 3, 1)]
     elif path_type == 'double-straight-line':
         corner_points = np.array([[-x, -y, -z], [0, 0, 0], [x, y, z]])
         corner_t = np.linspace(0, 1, len(corner_points))
-        t = np.linspace(0, 1, num_frames)
+        t = np.linspace(0, 1, speed*num_frames)
         cs = interp1d(corner_t, corner_points, axis=0, kind='quadratic')
         spline = cs(t)
         xs, ys, zs = [xx.squeeze() for xx in np.split(spline, 3, 1)]        
